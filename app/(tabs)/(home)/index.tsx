@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Dimensions, Animated, Platform } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Dimensions, Animated, Platform, Modal } from 'react-native';
 import { Stack } from 'expo-router';
 import { colors } from '@/styles/commonStyles';
 import * as Haptics from 'expo-haptics';
@@ -24,6 +24,7 @@ export default function HomeScreen() {
   console.log('HomeScreen: Component mounted');
   
   const [gameState, setGameState] = useState<GameState>('menu');
+  const [showStatsModal, setShowStatsModal] = useState(false);
   const [stats, setStats] = useState<GameStats>({
     currentStreak: 0,
     bestStreak: 0,
@@ -31,7 +32,7 @@ export default function HomeScreen() {
     perfectTaps: 0,
   });
   
-  const [ballPosition] = useState(new Animated.Value(0));
+  const ballPosition = useRef(new Animated.Value(0)).current;
   const [targetPosition, setTargetPosition] = useState(SCREEN_WIDTH / 2);
   const [targetWidth, setTargetWidth] = useState(INITIAL_TARGET_WIDTH);
   const [ballSize, setBallSize] = useState(BALL_SIZE);
@@ -45,6 +46,7 @@ export default function HomeScreen() {
   
   const animationRef = useRef<any>(null);
   const gameLoopRef = useRef<any>(null);
+  const currentPositionRef = useRef(0);
 
   const streakLevel: StreakLevel = 
     stats.currentStreak >= 10 ? 'gold' :
@@ -65,6 +67,7 @@ export default function HomeScreen() {
     setBallSize(BALL_SIZE);
     setBackgroundDarkness(0);
     ballPosition.setValue(0);
+    currentPositionRef.current = 0;
     startBallAnimation();
   };
 
@@ -80,22 +83,29 @@ export default function HomeScreen() {
     
     const currentSpeed = speed + (Math.random() * 0.5 - 0.25);
     
-    const animate = () => {
-      ballPosition.setValue(0);
-      
-      animationRef.current = Animated.timing(ballPosition, {
-        toValue: SCREEN_WIDTH,
-        duration: (SCREEN_WIDTH / currentSpeed) * 16,
-        useNativeDriver: true,
-      }).start(({ finished }) => {
-        if (finished && gameState === 'playing') {
-          setDirection(prev => prev * -1);
-          animate();
-        }
-      });
-    };
+    ballPosition.setValue(0);
+    currentPositionRef.current = 0;
     
-    animate();
+    ballPosition.addListener(({ value }) => {
+      currentPositionRef.current = value;
+    });
+    
+    animationRef.current = Animated.loop(
+      Animated.sequence([
+        Animated.timing(ballPosition, {
+          toValue: SCREEN_WIDTH - ballSize,
+          duration: (SCREEN_WIDTH / currentSpeed) * 16,
+          useNativeDriver: true,
+        }),
+        Animated.timing(ballPosition, {
+          toValue: 0,
+          duration: (SCREEN_WIDTH / currentSpeed) * 16,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    
+    animationRef.current.start();
   };
 
   const handleTap = () => {
@@ -103,7 +113,7 @@ export default function HomeScreen() {
     
     console.log('User tapped screen during game');
     
-    const currentPosition = (ballPosition as any)._value;
+    const currentPosition = currentPositionRef.current;
     const targetLeft = targetPosition - targetWidth / 2;
     const targetRight = targetPosition + targetWidth / 2;
     
@@ -156,7 +166,9 @@ export default function HomeScreen() {
     if (animationRef.current) {
       animationRef.current.stop();
     }
+    ballPosition.removeAllListeners();
     ballPosition.setValue(0);
+    currentPositionRef.current = 0;
     startBallAnimation();
   };
 
@@ -176,6 +188,7 @@ export default function HomeScreen() {
     if (animationRef.current) {
       animationRef.current.stop();
     }
+    ballPosition.removeAllListeners();
     
     setStats(prev => ({
       ...prev,
@@ -194,6 +207,7 @@ export default function HomeScreen() {
     setBallSize(BALL_SIZE);
     setBackgroundDarkness(0);
     ballPosition.setValue(0);
+    currentPositionRef.current = 0;
     startBallAnimation();
   };
 
@@ -205,16 +219,19 @@ export default function HomeScreen() {
       if (gameLoopRef.current) {
         clearInterval(gameLoopRef.current);
       }
+      ballPosition.removeAllListeners();
     };
   }, []);
 
   const backgroundOpacity = `rgba(0, 0, 0, ${backgroundDarkness})`;
   const currentStreakText = `${stats.currentStreak}`;
-  const bestStreakText = `Best: ${stats.bestStreak}`;
+  const bestStreakText = `${stats.bestStreak}`;
   const accuracyPercent = stats.totalTaps > 0 
     ? ((stats.perfectTaps / stats.totalTaps) * 100).toFixed(1) 
     : '0.0';
   const accuracyText = `${accuracyPercent}%`;
+  const totalTapsText = `${stats.totalTaps}`;
+  const perfectTapsText = `${stats.perfectTaps}`;
 
   if (gameState === 'menu') {
     return (
@@ -226,16 +243,15 @@ export default function HomeScreen() {
           <Text style={styles.titleInsanity}>INSANITY</Text>
           <Text style={styles.subtitle}>Ultimate Tap</Text>
           
-          <View style={styles.statsCard}>
-            <View style={styles.statRow}>
-              <Text style={styles.statLabel}>Best Streak</Text>
-              <Text style={styles.statValue}>{bestStreakText}</Text>
-            </View>
-            <View style={styles.statRow}>
-              <Text style={styles.statLabel}>Perfect Accuracy</Text>
-              <Text style={styles.statValue}>{accuracyText}</Text>
-            </View>
-          </View>
+          <TouchableOpacity 
+            style={styles.statsButton}
+            onPress={() => {
+              console.log('User tapped Personal Best button');
+              setShowStatsModal(true);
+            }}
+          >
+            <Text style={styles.statsButtonText}>📊 PERSONAL BEST</Text>
+          </TouchableOpacity>
           
           <TouchableOpacity style={styles.startButton} onPress={startGame}>
             <Text style={styles.startButtonText}>START</Text>
@@ -247,6 +263,52 @@ export default function HomeScreen() {
             <Text style={styles.instructionText}>Build streaks for bronze, silver, gold</Text>
           </View>
         </View>
+
+        <Modal
+          visible={showStatsModal}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowStatsModal(false)}
+        >
+          <TouchableOpacity 
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowStatsModal(false)}
+          >
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>PERSONAL BEST</Text>
+              
+              <View style={styles.modalStatsContainer}>
+                <View style={styles.modalStatCard}>
+                  <Text style={styles.modalStatValue}>{bestStreakText}</Text>
+                  <Text style={styles.modalStatLabel}>Best Streak</Text>
+                </View>
+                
+                <View style={styles.modalStatCard}>
+                  <Text style={styles.modalStatValue}>{accuracyText}</Text>
+                  <Text style={styles.modalStatLabel}>Perfect Accuracy</Text>
+                </View>
+                
+                <View style={styles.modalStatCard}>
+                  <Text style={styles.modalStatValue}>{totalTapsText}</Text>
+                  <Text style={styles.modalStatLabel}>Total Taps</Text>
+                </View>
+                
+                <View style={styles.modalStatCard}>
+                  <Text style={styles.modalStatValue}>{perfectTapsText}</Text>
+                  <Text style={styles.modalStatLabel}>Perfect Taps</Text>
+                </View>
+              </View>
+              
+              <TouchableOpacity 
+                style={styles.modalCloseButton}
+                onPress={() => setShowStatsModal(false)}
+              >
+                <Text style={styles.modalCloseButtonText}>CLOSE</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
       </View>
     );
   }
@@ -398,30 +460,22 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '600',
     color: colors.textSecondary,
-    marginBottom: 60,
-  },
-  statsCard: {
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 24,
-    width: '100%',
     marginBottom: 40,
   },
-  statRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginVertical: 8,
+  statsButton: {
+    backgroundColor: colors.card,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 20,
+    marginBottom: 20,
+    borderWidth: 2,
+    borderColor: colors.primary,
   },
-  statLabel: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    fontWeight: '500',
-  },
-  statValue: {
-    fontSize: 20,
-    color: colors.text,
+  statsButtonText: {
+    fontSize: 18,
     fontWeight: '700',
+    color: colors.text,
+    letterSpacing: 1,
   },
   startButton: {
     backgroundColor: colors.primary,
@@ -444,6 +498,64 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginVertical: 4,
     textAlign: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: colors.background,
+    borderRadius: 24,
+    padding: 32,
+    width: '85%',
+    maxWidth: 400,
+    borderWidth: 2,
+    borderColor: colors.primary,
+  },
+  modalTitle: {
+    fontSize: 32,
+    fontWeight: '900',
+    color: colors.primary,
+    textAlign: 'center',
+    marginBottom: 24,
+    letterSpacing: 2,
+  },
+  modalStatsContainer: {
+    marginBottom: 24,
+  },
+  modalStatCard: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  modalStatValue: {
+    fontSize: 36,
+    fontWeight: '900',
+    color: colors.text,
+    marginBottom: 4,
+  },
+  modalStatLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  modalCloseButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+  },
+  modalCloseButtonText: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: colors.text,
+    letterSpacing: 2,
   },
   gameArea: {
     flex: 1,
