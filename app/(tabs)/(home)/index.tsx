@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Dimensions, Animated, Platform, Modal } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { colors } from '@/styles/commonStyles';
 import * as Haptics from 'expo-haptics';
 
@@ -23,6 +23,7 @@ interface GameStats {
 export default function HomeScreen() {
   console.log('HomeScreen: Component mounted');
   
+  const router = useRouter();
   const [gameState, setGameState] = useState<GameState>('menu');
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [stats, setStats] = useState<GameStats>({
@@ -211,6 +212,23 @@ export default function HomeScreen() {
     startBallAnimation();
   };
 
+  const goHome = () => {
+    console.log('User tapped HOME button');
+    setShowFeedback(false);
+    setGhostPosition(null);
+    setGameState('menu');
+    setSpeed(INITIAL_SPEED);
+    setTargetWidth(INITIAL_TARGET_WIDTH);
+    setBallSize(BALL_SIZE);
+    setBackgroundDarkness(0);
+    ballPosition.setValue(0);
+    currentPositionRef.current = 0;
+    if (animationRef.current) {
+      animationRef.current.stop();
+    }
+    ballPosition.removeAllListeners();
+  };
+
   useEffect(() => {
     return () => {
       if (animationRef.current) {
@@ -315,11 +333,7 @@ export default function HomeScreen() {
 
   if (gameState === 'failed') {
     return (
-      <TouchableOpacity 
-        style={styles.container} 
-        activeOpacity={1} 
-        onPress={restartGame}
-      >
+      <View style={styles.container}>
         <Stack.Screen options={{ headerShown: false }} />
         
         <View style={styles.gameArea}>
@@ -369,8 +383,24 @@ export default function HomeScreen() {
               <Text style={styles.feedbackSubtext}>TAP TO RETRY</Text>
             </View>
           )}
+
+          <View style={styles.failedButtonsContainer}>
+            <TouchableOpacity 
+              style={styles.retryButton}
+              onPress={restartGame}
+            >
+              <Text style={styles.retryButtonText}>RETRY</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.homeButton}
+              onPress={goHome}
+            >
+              <Text style={styles.homeButtonText}>HOME</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </TouchableOpacity>
+      </View>
     );
   }
 
@@ -630,7 +660,7 @@ const styles = StyleSheet.create({
   },
   feedbackContainer: {
     position: 'absolute',
-    bottom: 120,
+    bottom: 200,
     left: 0,
     right: 0,
     alignItems: 'center',
@@ -646,5 +676,49 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.textSecondary,
     marginTop: 8,
+  },
+  failedButtonsContainer: {
+    position: 'absolute',
+    bottom: 80,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 20,
+    paddingHorizontal: 40,
+    zIndex: 10,
+  },
+  retryButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: 16,
+    paddingHorizontal: 40,
+    borderRadius: 20,
+    flex: 1,
+    maxWidth: 150,
+  },
+  retryButtonText: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: colors.text,
+    textAlign: 'center',
+    letterSpacing: 1,
+  },
+  homeButton: {
+    backgroundColor: colors.card,
+    paddingVertical: 16,
+    paddingHorizontal: 40,
+    borderRadius: 20,
+    flex: 1,
+    maxWidth: 150,
+    borderWidth: 2,
+    borderColor: colors.textSecondary,
+  },
+  homeButtonText: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: colors.text,
+    textAlign: 'center',
+    letterSpacing: 1,
   },
 });
