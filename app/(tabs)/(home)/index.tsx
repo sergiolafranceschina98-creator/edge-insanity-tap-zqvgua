@@ -9,7 +9,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const BALL_SIZE = 40;
 const INITIAL_TARGET_WIDTH = 80;
 const INITIAL_SPEED = 2;
-const AUTO_RESTART_DELAY = 1500; // 1.5 seconds - FASTER RESTART
+const AUTO_RESTART_DELAY = 1000; // 1 second - EVEN FASTER RESTART
 
 type GameState = 'menu' | 'playing' | 'failed';
 type StreakLevel = 'none' | 'bronze' | 'silver' | 'gold';
@@ -72,6 +72,7 @@ export default function HomeScreen() {
     // Stop any existing animation
     if (animationRef.current) {
       animationRef.current.stop();
+      animationRef.current = null;
     }
     ballPosition.removeAllListeners();
     
@@ -79,12 +80,14 @@ export default function HomeScreen() {
     ballPosition.setValue(0);
     currentPositionRef.current = 0;
     
-    // Start animation
-    startBallAnimation();
+    // Start animation with a small delay to ensure state is updated
+    setTimeout(() => {
+      startBallAnimation();
+    }, 50);
   };
 
   const startBallAnimation = () => {
-    console.log('Starting ball animation');
+    console.log('Starting ball animation - current position:', currentPositionRef.current);
     
     const randomTargetPos = Math.random() * (SCREEN_WIDTH - INITIAL_TARGET_WIDTH) + INITIAL_TARGET_WIDTH / 2;
     setTargetPosition(randomTargetPos);
@@ -97,9 +100,12 @@ export default function HomeScreen() {
     
     const currentSpeed = speed + (Math.random() * 0.5 - 0.25);
     
-    // CRITICAL: Reset position before starting animation
+    // CRITICAL: Ensure position is at 0
     ballPosition.setValue(0);
     currentPositionRef.current = 0;
+    
+    // Remove old listeners before adding new one
+    ballPosition.removeAllListeners();
     
     // Add listener to track position
     ballPosition.addListener(({ value }) => {
@@ -107,10 +113,10 @@ export default function HomeScreen() {
     });
     
     // Create and start animation
-    animationRef.current = Animated.loop(
+    const animation = Animated.loop(
       Animated.sequence([
         Animated.timing(ballPosition, {
-          toValue: SCREEN_WIDTH - ballSize,
+          toValue: SCREEN_WIDTH - randomBallSize,
           duration: (SCREEN_WIDTH / currentSpeed) * 16,
           useNativeDriver: true,
         }),
@@ -122,14 +128,15 @@ export default function HomeScreen() {
       ])
     );
     
-    animationRef.current.start();
-    console.log('Ball animation started');
+    animationRef.current = animation;
+    animation.start();
+    console.log('Ball animation started successfully');
   };
 
   const handleTap = () => {
     if (gameState !== 'playing') return;
     
-    console.log('User tapped screen during game');
+    console.log('User tapped screen during game - ball position:', currentPositionRef.current);
     
     const currentPosition = currentPositionRef.current;
     const targetLeft = targetPosition - targetWidth / 2;
@@ -184,13 +191,17 @@ export default function HomeScreen() {
     // Stop current animation
     if (animationRef.current) {
       animationRef.current.stop();
+      animationRef.current = null;
     }
     ballPosition.removeAllListeners();
     
-    // Reset and restart
+    // Reset and restart with delay
     ballPosition.setValue(0);
     currentPositionRef.current = 0;
-    startBallAnimation();
+    
+    setTimeout(() => {
+      startBallAnimation();
+    }, 50);
   };
 
   const handleFailure = (distance: number, currentPosition: number) => {
@@ -210,6 +221,7 @@ export default function HomeScreen() {
     // Stop animation
     if (animationRef.current) {
       animationRef.current.stop();
+      animationRef.current = null;
     }
     ballPosition.removeAllListeners();
     
@@ -219,7 +231,7 @@ export default function HomeScreen() {
       totalTaps: prev.totalTaps + 1,
     }));
 
-    // AUTO-RESTART after delay (1.5 seconds)
+    // AUTO-RESTART after delay (1 second)
     autoRestartTimerRef.current = setTimeout(() => {
       console.log('Auto-restarting game after failure');
       restartGame();
@@ -238,13 +250,13 @@ export default function HomeScreen() {
     // Stop any existing animation
     if (animationRef.current) {
       animationRef.current.stop();
+      animationRef.current = null;
     }
     ballPosition.removeAllListeners();
     
     // Reset all state
     setShowFeedback(false);
     setGhostPosition(null);
-    setGameState('playing');
     setSpeed(INITIAL_SPEED);
     setTargetWidth(INITIAL_TARGET_WIDTH);
     setBallSize(BALL_SIZE);
@@ -254,8 +266,14 @@ export default function HomeScreen() {
     ballPosition.setValue(0);
     currentPositionRef.current = 0;
     
-    // Start new animation
-    startBallAnimation();
+    // Set game state to playing
+    setGameState('playing');
+    
+    // Start new animation with a delay to ensure state is fully updated
+    setTimeout(() => {
+      console.log('Starting animation after restart delay');
+      startBallAnimation();
+    }, 100);
   };
 
   const goHome = () => {
@@ -270,6 +288,7 @@ export default function HomeScreen() {
     // Stop animation
     if (animationRef.current) {
       animationRef.current.stop();
+      animationRef.current = null;
     }
     ballPosition.removeAllListeners();
     
