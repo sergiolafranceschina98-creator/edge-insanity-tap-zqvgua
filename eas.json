@@ -1,3 +1,4 @@
+
 {
   "build": {
     "development": {
@@ -7,10 +8,32 @@
     },
     "preview": {
       "distribution": "internal",
-      "autoIncrement": true
+      "autoIncrement": true,
+      "ios": {
+        "simulator": false
+      }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "ios": {
+        "buildConfiguration": "Release"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleId": "your-apple-id@example.com",
+        "ascAppId": "your-app-store-connect-id",
+        "appleTeamId": "your-team-id"
+      },
+      "android": {
+        "serviceAccountKeyPath": "./path-to-service-account.json",
+        "track": "internal"
+      }
     }
   }
 }
