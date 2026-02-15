@@ -49,6 +49,7 @@ export default function HomeScreen() {
   const animationRef = useRef<any>(null);
   const autoRestartTimerRef = useRef<any>(null);
   const currentPositionRef = useRef(0);
+  const animationDurationRef = useRef(0);
 
   const streakLevel: StreakLevel = 
     stats.currentStreak >= 10 ? 'gold' :
@@ -100,6 +101,10 @@ export default function HomeScreen() {
     
     const currentSpeed = speed + (Math.random() * 0.5 - 0.25);
     
+    // Calculate animation duration and store it
+    const duration = (SCREEN_WIDTH / currentSpeed) * 16;
+    animationDurationRef.current = duration;
+    
     // CRITICAL: Ensure position is at 0
     ballPosition.setValue(0);
     currentPositionRef.current = 0;
@@ -117,12 +122,12 @@ export default function HomeScreen() {
       Animated.sequence([
         Animated.timing(ballPosition, {
           toValue: SCREEN_WIDTH - randomBallSize,
-          duration: (SCREEN_WIDTH / currentSpeed) * 16,
+          duration: duration,
           useNativeDriver: true,
         }),
         Animated.timing(ballPosition, {
           toValue: 0,
-          duration: (SCREEN_WIDTH / currentSpeed) * 16,
+          duration: duration,
           useNativeDriver: true,
         }),
       ])
@@ -211,8 +216,14 @@ export default function HomeScreen() {
     setGameState('failed');
     setGhostPosition(currentPosition);
     
-    const timingError = (distance / speed * 16).toFixed(3);
-    const feedbackMessage = `${timingError}s too ${currentPosition < targetPosition ? 'early' : 'late'}!`;
+    // FIXED: Calculate timing error correctly
+    // distance is in pixels, animationDurationRef.current is in milliseconds for full screen width
+    // So: (distance / SCREEN_WIDTH) * animationDurationRef.current gives milliseconds
+    const timingErrorMs = (distance / SCREEN_WIDTH) * animationDurationRef.current;
+    const timingErrorSeconds = (timingErrorMs / 1000).toFixed(3);
+    const feedbackMessage = `${timingErrorSeconds}s too ${currentPosition < targetPosition ? 'early' : 'late'}!`;
+    
+    console.log('Timing calculation - distance:', distance, 'duration:', animationDurationRef.current, 'error:', timingErrorSeconds);
     
     setFeedbackText(feedbackMessage);
     setFeedbackColor(colors.primary);
