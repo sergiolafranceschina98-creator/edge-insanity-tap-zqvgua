@@ -9,6 +9,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const BALL_SIZE = 40;
 const INITIAL_TARGET_WIDTH = 80;
 const INITIAL_SPEED = 2;
+const AUTO_RESTART_DELAY = 3000; // 3 seconds
 
 type GameState = 'menu' | 'playing' | 'failed';
 type StreakLevel = 'none' | 'bronze' | 'silver' | 'gold';
@@ -46,7 +47,7 @@ export default function HomeScreen() {
   const [backgroundDarkness, setBackgroundDarkness] = useState(0);
   
   const animationRef = useRef<any>(null);
-  const gameLoopRef = useRef<any>(null);
+  const autoRestartTimerRef = useRef<any>(null);
   const currentPositionRef = useRef(0);
 
   const streakLevel: StreakLevel = 
@@ -174,6 +175,7 @@ export default function HomeScreen() {
   };
 
   const handleFailure = (distance: number, currentPosition: number) => {
+    console.log('Player failed - starting auto-restart timer');
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     
     setGameState('failed');
@@ -196,10 +198,23 @@ export default function HomeScreen() {
       currentStreak: 0,
       totalTaps: prev.totalTaps + 1,
     }));
+
+    // AUTO-RESTART after delay
+    autoRestartTimerRef.current = setTimeout(() => {
+      console.log('Auto-restarting game after failure');
+      restartGame();
+    }, AUTO_RESTART_DELAY);
   };
 
   const restartGame = () => {
-    console.log('User tapped to restart game');
+    console.log('Restarting game');
+    
+    // Clear auto-restart timer if it exists
+    if (autoRestartTimerRef.current) {
+      clearTimeout(autoRestartTimerRef.current);
+      autoRestartTimerRef.current = null;
+    }
+    
     setShowFeedback(false);
     setGhostPosition(null);
     setGameState('playing');
@@ -214,6 +229,13 @@ export default function HomeScreen() {
 
   const goHome = () => {
     console.log('User tapped HOME button');
+    
+    // Clear auto-restart timer
+    if (autoRestartTimerRef.current) {
+      clearTimeout(autoRestartTimerRef.current);
+      autoRestartTimerRef.current = null;
+    }
+    
     setShowFeedback(false);
     setGhostPosition(null);
     setGameState('menu');
@@ -234,8 +256,8 @@ export default function HomeScreen() {
       if (animationRef.current) {
         animationRef.current.stop();
       }
-      if (gameLoopRef.current) {
-        clearInterval(gameLoopRef.current);
+      if (autoRestartTimerRef.current) {
+        clearTimeout(autoRestartTimerRef.current);
       }
       ballPosition.removeAllListeners();
     };
@@ -380,30 +402,22 @@ export default function HomeScreen() {
               <Text style={[styles.feedbackText, { color: feedbackColor }]}>
                 {feedbackText}
               </Text>
-              <Text style={styles.feedbackSubtext}>TAP TO RETRY</Text>
+              <Text style={styles.feedbackSubtext}>Auto-restarting...</Text>
             </View>
           )}
 
-          <View style={styles.failedButtonsContainer}>
-            <TouchableOpacity 
-              style={styles.retryButton}
-              onPress={restartGame}
-            >
-              <Text style={styles.retryButtonText}>RETRY</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.homeButton}
-              onPress={goHome}
-            >
-              <Text style={styles.homeButtonText}>HOME</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity 
+            style={styles.homeButtonPlaying}
+            onPress={goHome}
+          >
+            <Text style={styles.homeButtonPlayingText}>HOME</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
   }
 
+  // PLAYING STATE
   return (
     <TouchableOpacity 
       style={styles.container} 
@@ -456,6 +470,14 @@ export default function HomeScreen() {
             </Text>
           </View>
         )}
+
+        {/* HOME BUTTON VISIBLE DURING PLAYING STATE */}
+        <TouchableOpacity 
+          style={styles.homeButtonPlaying}
+          onPress={goHome}
+        >
+          <Text style={styles.homeButtonPlayingText}>HOME</Text>
+        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
@@ -677,48 +699,22 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 8,
   },
-  failedButtonsContainer: {
+  homeButtonPlaying: {
     position: 'absolute',
-    bottom: 80,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 20,
-    paddingHorizontal: 40,
-    zIndex: 10,
-  },
-  retryButton: {
-    backgroundColor: colors.primary,
-    paddingVertical: 16,
-    paddingHorizontal: 40,
-    borderRadius: 20,
-    flex: 1,
-    maxWidth: 150,
-  },
-  retryButtonText: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: colors.text,
-    textAlign: 'center',
-    letterSpacing: 1,
-  },
-  homeButton: {
+    top: 60,
+    right: 20,
     backgroundColor: colors.card,
-    paddingVertical: 16,
-    paddingHorizontal: 40,
-    borderRadius: 20,
-    flex: 1,
-    maxWidth: 150,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 16,
     borderWidth: 2,
     borderColor: colors.textSecondary,
+    zIndex: 20,
   },
-  homeButtonText: {
-    fontSize: 18,
+  homeButtonPlayingText: {
+    fontSize: 16,
     fontWeight: '900',
     color: colors.text,
-    textAlign: 'center',
     letterSpacing: 1,
   },
 });
