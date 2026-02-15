@@ -9,7 +9,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const BALL_SIZE = 40;
 const INITIAL_TARGET_WIDTH = 80;
 const INITIAL_SPEED = 2;
-const AUTO_RESTART_DELAY = 3000; // 3 seconds
+const AUTO_RESTART_DELAY = 1500; // 1.5 seconds - FASTER RESTART
 
 type GameState = 'menu' | 'playing' | 'failed';
 type StreakLevel = 'none' | 'bronze' | 'silver' | 'gold';
@@ -68,12 +68,24 @@ export default function HomeScreen() {
     setTargetWidth(INITIAL_TARGET_WIDTH);
     setBallSize(BALL_SIZE);
     setBackgroundDarkness(0);
+    
+    // Stop any existing animation
+    if (animationRef.current) {
+      animationRef.current.stop();
+    }
+    ballPosition.removeAllListeners();
+    
+    // Reset position
     ballPosition.setValue(0);
     currentPositionRef.current = 0;
+    
+    // Start animation
     startBallAnimation();
   };
 
   const startBallAnimation = () => {
+    console.log('Starting ball animation');
+    
     const randomTargetPos = Math.random() * (SCREEN_WIDTH - INITIAL_TARGET_WIDTH) + INITIAL_TARGET_WIDTH / 2;
     setTargetPosition(randomTargetPos);
     
@@ -85,13 +97,16 @@ export default function HomeScreen() {
     
     const currentSpeed = speed + (Math.random() * 0.5 - 0.25);
     
+    // CRITICAL: Reset position before starting animation
     ballPosition.setValue(0);
     currentPositionRef.current = 0;
     
+    // Add listener to track position
     ballPosition.addListener(({ value }) => {
       currentPositionRef.current = value;
     });
     
+    // Create and start animation
     animationRef.current = Animated.loop(
       Animated.sequence([
         Animated.timing(ballPosition, {
@@ -108,6 +123,7 @@ export default function HomeScreen() {
     );
     
     animationRef.current.start();
+    console.log('Ball animation started');
   };
 
   const handleTap = () => {
@@ -165,10 +181,13 @@ export default function HomeScreen() {
     const newDarkness = Math.min(0.5, backgroundDarkness + 0.02);
     setBackgroundDarkness(newDarkness);
     
+    // Stop current animation
     if (animationRef.current) {
       animationRef.current.stop();
     }
     ballPosition.removeAllListeners();
+    
+    // Reset and restart
     ballPosition.setValue(0);
     currentPositionRef.current = 0;
     startBallAnimation();
@@ -188,6 +207,7 @@ export default function HomeScreen() {
     setFeedbackColor(colors.primary);
     setShowFeedback(true);
     
+    // Stop animation
     if (animationRef.current) {
       animationRef.current.stop();
     }
@@ -199,7 +219,7 @@ export default function HomeScreen() {
       totalTaps: prev.totalTaps + 1,
     }));
 
-    // AUTO-RESTART after delay
+    // AUTO-RESTART after delay (1.5 seconds)
     autoRestartTimerRef.current = setTimeout(() => {
       console.log('Auto-restarting game after failure');
       restartGame();
@@ -207,7 +227,7 @@ export default function HomeScreen() {
   };
 
   const restartGame = () => {
-    console.log('Restarting game');
+    console.log('Restarting game - resetting all state and animation');
     
     // Clear auto-restart timer if it exists
     if (autoRestartTimerRef.current) {
@@ -215,6 +235,13 @@ export default function HomeScreen() {
       autoRestartTimerRef.current = null;
     }
     
+    // Stop any existing animation
+    if (animationRef.current) {
+      animationRef.current.stop();
+    }
+    ballPosition.removeAllListeners();
+    
+    // Reset all state
     setShowFeedback(false);
     setGhostPosition(null);
     setGameState('playing');
@@ -222,8 +249,12 @@ export default function HomeScreen() {
     setTargetWidth(INITIAL_TARGET_WIDTH);
     setBallSize(BALL_SIZE);
     setBackgroundDarkness(0);
+    
+    // CRITICAL: Reset position to 0
     ballPosition.setValue(0);
     currentPositionRef.current = 0;
+    
+    // Start new animation
     startBallAnimation();
   };
 
@@ -236,6 +267,12 @@ export default function HomeScreen() {
       autoRestartTimerRef.current = null;
     }
     
+    // Stop animation
+    if (animationRef.current) {
+      animationRef.current.stop();
+    }
+    ballPosition.removeAllListeners();
+    
     setShowFeedback(false);
     setGhostPosition(null);
     setGameState('menu');
@@ -245,10 +282,6 @@ export default function HomeScreen() {
     setBackgroundDarkness(0);
     ballPosition.setValue(0);
     currentPositionRef.current = 0;
-    if (animationRef.current) {
-      animationRef.current.stop();
-    }
-    ballPosition.removeAllListeners();
   };
 
   useEffect(() => {
@@ -402,7 +435,7 @@ export default function HomeScreen() {
               <Text style={[styles.feedbackText, { color: feedbackColor }]}>
                 {feedbackText}
               </Text>
-              <Text style={styles.feedbackSubtext}>Auto-restarting...</Text>
+              <Text style={styles.feedbackSubtext}>Restarting...</Text>
             </View>
           )}
 
