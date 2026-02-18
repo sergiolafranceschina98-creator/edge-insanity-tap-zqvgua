@@ -5,51 +5,55 @@
     "slug": "edge-of-insanity",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/app-icon-cnw.png",
-    "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "icon": "./assets/images/final_quest_240x240.png",
+    "userInterfaceStyle": "dark",
     "splash": {
-      "image": "./assets/images/app-icon-cnw.png",
+      "image": "./assets/images/final_quest_240x240__.png",
       "resizeMode": "contain",
       "backgroundColor": "#000000"
     },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.edgeofinsanity.ultimatetap",
+      "buildNumber": "1.0.0",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "UIBackgroundModes": []
       },
-      "buildNumber": "1"
+      "privacyManifests": {
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPITypeUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": [
+              "CA92.1"
+            ]
+          }
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/app-icon-cnw.png",
+        "foregroundImage": "./assets/images/final_quest_240x240.png",
         "backgroundColor": "#000000"
       },
-      "edgeToEdgeEnabled": true,
       "package": "com.edgeofinsanity.ultimatetap",
-      "versionCode": 1,
-      "permissions": []
+      "versionCode": 1
     },
     "web": {
-      "favicon": "./assets/images/final_quest_240x240.png",
-      "bundler": "metro"
+      "favicon": "./assets/images/final_quest_240x240.png"
     },
     "plugins": [
-      "expo-font",
-      "expo-router",
-      "expo-web-browser"
+      "expo-router"
     ],
-    "scheme": "edgeofinsanity",
     "experiments": {
       "typedRoutes": true
     },
     "extra": {
-      "router": {},
-      "backendUrl": "https://e6nqvdg6rdck8u4jzmkp99uredhg6u4m.app.specular.dev",
-      "eas": {
-        "projectId": "edge-of-insanity-ultimate-tap"
+      "router": {
+        "origin": false
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
     }
   }
 }
